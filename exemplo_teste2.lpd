@@ -1,0 +1,8 @@
+prg Exemplo02;
+var
+  int x;
+begin
+  write("Entre com um número inteiro:");
+  read (x);
+  write("O número que você digitou é:",x);
+end.

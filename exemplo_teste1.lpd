@@ -1,0 +1,4 @@
+prg Exemplo01;
+begin
+    write("Olá mundo!");
+end.

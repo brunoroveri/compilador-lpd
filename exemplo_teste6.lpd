@@ -1,0 +1,25 @@
+prg Exemplo06;
+var
+    int max;
+subrot
+    int SomatorioAteN (int n)
+    var
+        int i, total;
+    subrot
+        int Soma(int x, int y)
+        begin
+            write("Chamada #", i);
+            return (x+y);
+        end;
+    begin
+        total <- 1;
+        for(i <- 2; i <= n; i <- i+1)
+            total <- total+i;
+        return total;
+    end;
+{bloco de comandos principal}
+begin
+    write("Entre com a qtde que deseja calcular: ");
+    read(max);
+    write(" resultado é:", SomatorioAteN(max));
+end.

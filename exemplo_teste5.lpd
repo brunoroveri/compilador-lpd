@@ -1,0 +1,19 @@
+prg Exemplo05;
+{Este programa calcula a raiz quadrada de um número}
+var
+    float a,b,x,erro;
+begin
+    x <- 1.5;
+    erro <- 0.05;
+    a <- 1;
+    read(b);
+    while ((b-a) > erro)
+    begin
+        x <- (a+b)/2;
+        if (x*x < 2) then
+            a <- x
+        else
+            b <- x
+    end;
+    write(x);
+end.

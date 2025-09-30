@@ -1,0 +1,9 @@
+prg Exemplo03;
+subrot
+    int SOMA(int A, int B)
+    begin
+        return A+B;
+    end;
+begin
+    write(SOMA(1,2));
+end.

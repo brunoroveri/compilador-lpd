@@ -1,0 +1,18 @@
+prg Exemplo04;
+var
+    int a,b,c;
+begin
+    write("Entre com três valores inteiros:");
+    read(a);
+    read(b);
+    read(c);
+    if ((a+b>c) or (a+c>b) or (b+c>a)) then
+        write("Essas medidas não formam um triângulo.")
+    else
+        if ((a==b) and (b==c)) then
+            write("As medidas formam um triângulo eqüilátero")
+        else if ((a!=b) and (b!=c)) then
+            write("As medidas formam um triângulo escaleno")
+        else
+            write("As medidas formam um triângulo isósceles");  // Semicolon was added here
+end.
