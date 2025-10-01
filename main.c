@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     }
 
     iniciar_parser(fp);
-    analisar_programa_public();  // chama seu parser completo
+    analisar_programa_public();
     fclose(fp);
 
     printf("OK: análise sintática concluída.\n");
