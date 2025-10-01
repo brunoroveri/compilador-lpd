@@ -4,7 +4,7 @@
 typedef struct { const char* palavra; TAtomo tipo; } PalavraReservada;
 
 static PalavraReservada palavras_reservadas[] = {
-    {"and",    T_OP_LOG},   // operador lógico (parser espera T_OP_LOG)
+    {"and",    T_OP_LOG},
     {"begin",  T_BEGIN},
     {"char",   T_CHAR},
     {"else",   T_ELSE},
@@ -13,8 +13,8 @@ static PalavraReservada palavras_reservadas[] = {
     {"for",    T_FOR},
     {"if",     T_IF},
     {"int",    T_INT},
-    {"not",    T_OP_LOG},   // operador lógico
-    {"or",     T_OP_LOG},   // operador lógico
+    {"not",    T_OP_LOG},
+    {"or",     T_OP_LOG},
     {"prg",    T_PRG},
     {"read",   T_READ},
     {"repeat", T_REPEAT},
@@ -197,12 +197,10 @@ TInfoAtomo obter_atomo(void) {
         if (c == '/') {
             int d = fgetc(arquivo);
             if (d == '/') {
-                /* comentário de linha: // ... até \n ou EOF */
                 while ((d = fgetc(arquivo)) != EOF && d != '\n') { /* skip */ }
                 if (d == '\n') linha_atual++;
-                return obter_atomo(); /* retoma leitura */
+                return obter_atomo();
             } else if (d == '*') {
-                /* comentário de bloco:  / * ... * / */
                 int prev = 0, cur = 0, fechado = 0;
                 while ((cur = fgetc(arquivo)) != EOF) {
                     if (cur == '\n') linha_atual++;
@@ -213,7 +211,6 @@ TInfoAtomo obter_atomo(void) {
                 return obter_atomo(); /* retoma leitura */
             } else {
                 if (d != EOF) ungetc(d, arquivo);
-                /* não era comentário → é operador '/' */
             }
         }
         char op[2] = {(char)c, '\0'};

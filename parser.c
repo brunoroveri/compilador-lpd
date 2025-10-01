@@ -3,29 +3,9 @@
 #include <string.h>
 #include "scanner.h"
 
-/* ===========================================================
-   PARSER para LPD (descida recursiva)
-   - Compatível com scanner que retorna:
-     * T_ID, T_LITERAL_INT, T_LITERAL_FLOAT, T_LITERAL_CHAR, T_LITERAL_STRING,
-     * T_PRG, T_VAR, T_SUBROT, T_INT, T_FLOAT, T_CHAR, T_VOID,
-     * T_READ, T_WRITE, T_IF, T_THEN, T_ELSE, T_FOR, T_WHILE,
-     * T_REPEAT, T_UNTIL, T_BEGIN, T_END, T_RETURN,
-     * T_OP_ATRIB ("<-"), T_OP_ARIT (+ - * /), T_OP_REL (== != < > <= >=),
-     * T_OP_LOG (and or not),
-     * T_DELIM ( ( ) [ ] , ; . : ),
-     * T_FIM, T_ERRO
-   - Precedência: not > * / > + - > relacionais > and/or
-   - Correções:
-     * for(init; cond; update): init/update SEM ';' interno
-     * var: aceita 'id,id: tipo;' e também 'tipo id,id;'
-     * topo: aceita declarações sem 'var' logo após prg ... ;
-     * bloco: aceita declarações locais tipo-first no início do begin...end
-     * subrotina: aceita cabeçalho tipo-first e params "tipo id"
-   =========================================================== */
 
 static TInfoAtomo token_atual;
 
-/* ---------- Utilidades ---------- */
 
 static void erro_sintaxe(const char *msg, const char *esperado) {
     fprintf(stderr, "[ERRO SINTÁTICO] Linha %d: %s", token_atual.linha, msg);
@@ -64,7 +44,6 @@ static void casar_token(TAtomo t, const char *lex /*pode ser NULL*/) {
     proximo();
 }
 
-/* ---------- Protótipos ---------- */
 static void analisar_programa(void);
 static void analisar_secao_var_opt(void);
 static void analisar_decl_var(void);
@@ -72,14 +51,14 @@ static void analisar_tipo(void);
 
 static void analisar_subrotinas_opt(void);
 static void analisar_subrotina(void);
-static void analisar_parametros_opt(void); /* nova */
+static void analisar_parametros_opt(void);
 
 static void analisar_bloco(void);
 static void analisar_lista_comandos(void);
 static void analisar_comando(void);
 
 static void analisar_atribuicao(void);
-static void analisar_atribuicao_sem_pv(void); /* usada no for(...) */
+static void analisar_atribuicao_sem_pv(void);
 static void analisar_if(void);
 static void analisar_while(void);
 static void analisar_for(void);
@@ -88,23 +67,23 @@ static void analisar_read(void);
 static void analisar_write(void);
 static void analisar_return(void);
 
-/* Expressões (precedência) */
-static void analisar_expressao(void);                 // nível lógico (and/or)
-static void analisar_expressao_rel(void);             // relação (== != < > <= >=)
-static void analisar_expressao_arit(void);            // + -
-static void analisar_termo(void);                     // * /
-static void analisar_fator(void);                     // primários e not (unário)
 
-/* ---------- Inicialização ---------- */
+static void analisar_expressao(void); 
+static void analisar_expressao_rel(void);      
+static void analisar_expressao_arit(void);       
+static void analisar_termo(void);                    
+static void analisar_fator(void);                     
+
+
 void iniciar_parser(FILE *fp) {
-    arquivo = fp;     /* definido em scanner.c */
-    proximo();        /* lê primeiro token */
+    arquivo = fp; 
+    proximo();  
 }
 
-/* ---------- Implementação ---------- */
+
 
 static void analisar_programa(void) {
-    /* prg ID ; [var/decls ...] [subrot ...] begin ... end . */
+
     casar_token(T_PRG, NULL);
     casar_token(T_ID, NULL);
     casar_token(T_DELIM, ";");
@@ -113,28 +92,24 @@ static void analisar_programa(void) {
     analisar_subrotinas_opt();
 
     analisar_bloco();
-    casar_token(T_DELIM, ".");    /* ponto final do programa */
+    casar_token(T_DELIM, ".");
 
     if (!token_e(T_FIM)) {
         erro_sintaxe("Tokens após término do programa", "EOF");
     }
 }
 
-/* subrotinas opcionais logo após a seção de variáveis do programa */
 static void analisar_subrotinas_opt(void) {
-    /* Na LPD, toda subrotina começa com a palavra-chave 'subrot' */
     while (token_e(T_SUBROT)) {
         analisar_subrotina();
     }
 }
 
-/* var ...  (aceita também declarações sem 'var' no topo:  int x;  float y,z;  ou  x,y : int;) */
 static void analisar_secao_var_opt(void) {
-    /* Caso 1: seção explícita com 'var' */
     if (token_e(T_VAR)) {
         casar_token(T_VAR, NULL);
         while (1) {
-            analisar_decl_var();      /* uma declaração */
+            analisar_decl_var();
             casar_token(T_DELIM, ";");
             if (token_e(T_ID) || token_e(T_INT) || token_e(T_FLOAT) || token_e(T_CHAR) || token_e(T_VOID))
                 continue;
@@ -143,9 +118,7 @@ static void analisar_secao_var_opt(void) {
         return;
     }
 
-    /* Caso 2: declarações IMEDIATAS após 'prg ... ;' sem 'var' */
     while (token_e(T_ID) || token_e(T_INT) || token_e(T_FLOAT) || token_e(T_CHAR) || token_e(T_VOID)) {
-        /* Pare se chegou no início do bloco/subrotina */
         if (token_e(T_BEGIN) || token_e(T_SUBROT)) break;
 
         analisar_decl_var();
@@ -153,16 +126,11 @@ static void analisar_secao_var_opt(void) {
     }
 }
 
-/* Uma declaração de variável, aceitando:
-   - id (, id)* : tipo
-   - tipo id (, id)*
-*/
 static void analisar_decl_var(void) {
     if (token_e(T_INT) || token_e(T_FLOAT) || token_e(T_CHAR) || token_e(T_VOID)) {
-        /* Forma:  tipo id (, id)*  */
-        analisar_tipo();                  // consome o tipo primeiro
-        casar_token(T_ID, NULL);          // primeiro identificador
-        while (token_e_delim(",")) {      // ids adicionais
+        analisar_tipo();                 
+        casar_token(T_ID, NULL);     
+        while (token_e_delim(",")) {    
             casar_token(T_DELIM, ",");
             casar_token(T_ID, NULL);
         }
@@ -170,21 +138,19 @@ static void analisar_decl_var(void) {
     }
 
     if (token_e(T_ID)) {
-        /* Forma:  id (, id)* : tipo  */
         casar_token(T_ID, NULL);
         while (token_e_delim(",")) {
             casar_token(T_DELIM, ",");
             casar_token(T_ID, NULL);
         }
         casar_token(T_DELIM, ":");
-        analisar_tipo();                  // tipo no fim
+        analisar_tipo();
         return;
     }
 
     erro_sintaxe("Declaração de variável inválida", "tipo id...  ou  id : tipo");
 }
 
-/* Ex.: int | float | char | void */
 static void analisar_tipo(void) {
     if (token_e(T_INT) || token_e(T_FLOAT) || token_e(T_CHAR) || token_e(T_VOID)) {
         proximo();
@@ -193,74 +159,47 @@ static void analisar_tipo(void) {
     }
 }
 
-/* subrotinas:
-   Aceita dois formatos de cabeçalho:
-
-   1)  subrot <ID> ( <params_opt> ) [: <tipo>] ;
-   2)  subrot <tipo> <ID> ( <params_opt> ) ;
-
-   Onde <params_opt> pode ser:
-     - vazio
-     - lista "tipo id" separados por vírgula (ex.: int A, float B)
-     - OU lista "id, id : tipo" (compatibilidade)
-*/
 static void analisar_subrotina(void) {
     casar_token(T_SUBROT, NULL);
 
     int cabecalho_tipo_first = 0;
 
-    /* Lookahead: tipo-first? */
     if (token_e(T_INT) || token_e(T_FLOAT) || token_e(T_CHAR) || token_e(T_VOID)) {
-        /* formato: subrot <tipo> <ID> (...) */
         analisar_tipo();
         cabecalho_tipo_first = 1;
         casar_token(T_ID, NULL);
     } else {
-        /* formato: subrot <ID> (...) [: tipo]? */
         casar_token(T_ID, NULL);
     }
 
-    /* parâmetros */
     casar_token(T_DELIM, "(");
-    analisar_parametros_opt();   /* aceita "tipo id" ou "id,id: tipo" */
+    analisar_parametros_opt();
     casar_token(T_DELIM, ")");
 
-    /* no formato ID-first pode vir ": tipo" para retorno */
     if (!cabecalho_tipo_first && token_e_delim(":")) {
         casar_token(T_DELIM, ":");
         analisar_tipo();
     }
 
-    /* ';' após o cabeçalho é opcional */
     if (token_e_delim(";")) {
         casar_token(T_DELIM, ";");
     }
 
-    /* var locais opcionais e também declarações topo sem 'var' */
     analisar_secao_var_opt();
 
-    /* >>> NOVO: permitir subrotinas aninhadas antes do begin */
     analisar_subrotinas_opt();
 
-    /* corpo */
     analisar_bloco();
 
-    /* ';' após end de subrotina (se presente) */
     if (token_e_delim(";")) {
         casar_token(T_DELIM, ";");
     }
 }
 
-/* parâmetros opcionais dentro de (...)  :
-   - vazio
-   - "tipo id" ( , "tipo id")*
-   - OU "id (, id)* : tipo"    (compatibilidade)
-*/
 static void analisar_parametros_opt(void) {
     /* vazio */
     if (token_e_delim(")")) return;
 
-    /* caso 1: tipo-first →  tipo id ( , tipo id )* */
     if (token_e(T_INT) || token_e(T_FLOAT) || token_e(T_CHAR) || token_e(T_VOID)) {
         while (1) {
             analisar_tipo();
@@ -274,7 +213,6 @@ static void analisar_parametros_opt(void) {
         return;
     }
 
-    /* caso 2: id-first →  id (, id)* : tipo */
     if (token_e(T_ID)) {
         casar_token(T_ID, NULL);
         while (token_e_delim(",")) {
@@ -289,14 +227,7 @@ static void analisar_parametros_opt(void) {
     erro_sintaxe("Parâmetros inválidos", "tipo id  ou  id : tipo");
 }
 
-/* begin ... end
-   Aceita declarações locais tipo-first no início do bloco:
-   begin
-     int a, b;
-     float x;
-     ...comandos...
-   end
-*/
+
 static void analisar_bloco(void) {
     casar_token(T_BEGIN, NULL);
 
@@ -306,12 +237,10 @@ static void analisar_bloco(void) {
         casar_token(T_DELIM, ";");
     }
 
-    /* Depois das declarações (se houver), vêm os comandos */
     analisar_lista_comandos();
     casar_token(T_END, NULL);
 }
 
-/* comandos separados por ';' quando simples; compostos não exigem ';' após eles */
 static void analisar_lista_comandos(void) {
     while (1) {
         if (token_e(T_END)) break;
@@ -320,7 +249,7 @@ static void analisar_lista_comandos(void) {
 
         if (token_e_delim(";")) {
             casar_token(T_DELIM, ";");
-            while (token_e_delim(";")) casar_token(T_DELIM, ";"); /* permite ;; opcionais */
+            while (token_e_delim(";")) casar_token(T_DELIM, ";");
         } else {
             if (token_e(T_END)) break;
             if (!(token_e(T_ID) || token_e(T_READ) || token_e(T_WRITE) || token_e(T_RETURN) ||
@@ -335,7 +264,7 @@ static void analisar_lista_comandos(void) {
 /* despacho por 1º token */
 static void analisar_comando(void) {
     if (token_e(T_ID)) {
-        analisar_atribuicao();        /* comando simples → ';' vem na lista */
+        analisar_atribuicao();
     } else if (token_e(T_READ)) {
         analisar_read();
     } else if (token_e(T_WRITE)) {
@@ -360,11 +289,10 @@ static void analisar_comando(void) {
 /* ID <- expressao */
 static void analisar_atribuicao(void) {
     casar_token(T_ID, NULL);
-    casar_token(T_OP_ATRIB, NULL); /* "<-" */
+    casar_token(T_OP_ATRIB, NULL);
     analisar_expressao();
 }
 
-/* Versão SEM ';' (para usar no for(init; cond; update)) */
 static void analisar_atribuicao_sem_pv(void) {
     casar_token(T_ID, NULL);
     casar_token(T_OP_ATRIB, NULL); /* "<-" */
@@ -401,17 +329,14 @@ static void analisar_for(void) {
     casar_token(T_FOR, NULL);
     casar_token(T_DELIM, "(");
 
-    /* init opcional: se começa com ID, é atribuição sem ';' */
     if (token_e(T_ID)) {
         analisar_atribuicao_sem_pv();
     }
     casar_token(T_DELIM, ";");
 
-    /* cond: expressão (exigida) */
     analisar_expressao();
     casar_token(T_DELIM, ";");
 
-    /* update opcional: se começa com ID, atribuição sem ';' */
     if (token_e(T_ID)) {
         analisar_atribuicao_sem_pv();
     }
@@ -466,7 +391,6 @@ static void analisar_write(void) {
     casar_token(T_DELIM, ")");
 }
 
-/* return ;  |  return expressao ; */
 static void analisar_return(void) {
     casar_token(T_RETURN, NULL);
     if (!(token_e_delim(";"))) {
@@ -474,7 +398,6 @@ static void analisar_return(void) {
     }
 }
 
-/* ----------------- EXPRESSÕES (precedência) ------------------ */
 /* expressão_lógica ::= expressão_rel ( (and|or) expressão_rel )* */
 static void analisar_expressao(void) {
     analisar_expressao_rel();
@@ -511,11 +434,6 @@ static void analisar_termo(void) {
     }
 }
 
-/* fator ::= '(' expressão ')'
-           |  'not' fator
-           |  ID
-           |  literal_int | literal_float | literal_char | literal_string
-*/
 static void analisar_fator(void) {
     if (token_e_delim("(")) {
         casar_token(T_DELIM, "(");
@@ -525,15 +443,13 @@ static void analisar_fator(void) {
     }
     if (token_e_op_log("not")) {
         proximo();
-        analisar_fator(); /* not tem maior precedência */
+        analisar_fator();
         return;
     }
     if (token_e(T_ID)) {
-        /* Pode ser apenas ID, ou chamada: ID '(' args? ')' */
-        proximo(); /* consome o ID */
+        proximo();
         if (token_e_delim("(")) {
             casar_token(T_DELIM, "(");
-            /* args opcionais */
             if (!token_e_delim(")")) {
                 analisar_expressao();
                 while (token_e_delim(",")) {
@@ -553,13 +469,6 @@ static void analisar_fator(void) {
 
     erro_sintaxe("Fator inválido em expressão", NULL);
 }
-
-/* ===========================================================
-   Entrada principal para analisar o programa completo.
-   Use:
-     iniciar_parser(arquivo);
-     analisar_programa_public();
-   =========================================================== */
 
 void analisar_programa_public(void) {
     analisar_programa();

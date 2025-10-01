@@ -10,7 +10,6 @@
 
 // Enum para os tipos de átomos (tokens)
 typedef enum {
-    // Palavras-reservadas / tipos / estruturas
     T_PRG, T_VAR, T_SUBROT, T_INT, T_FLOAT, T_CHAR, T_VOID,
     T_READ, T_WRITE, T_IF, T_THEN, T_ELSE, T_FOR, T_WHILE,
     T_REPEAT, T_UNTIL, T_BEGIN, T_END, T_RETURN,
@@ -23,7 +22,7 @@ typedef enum {
     T_OP_ATRIB, // <-
     T_OP_ARIT,  // + - * /
     T_OP_REL,   // == != > < >= <=
-    T_OP_LOG,   // and or not  (parser espera T_OP_LOG)
+    T_OP_LOG,   // and or not
 
     // Delimitadores e controle
     T_DELIM,    // ( ) [ ] , ; .
