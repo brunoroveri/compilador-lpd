@@ -4,7 +4,7 @@ Implementação de um analisador léxico (scanner) e analisador sintático (pars
 
 Bruno Roveri - 10401752
 
-Ian Merlini -
+Ian Merlini - 10402831
 
 
 ## Como compilar
